@@ -1,0 +1,13 @@
+# Welcome to the TWB config
+# Mode
+# teleport - teleports player to other side of map. Currently, only works east and west
+# because this plugin is designed for an earth map
+# block - blocks players from crossing border
+mode: teleport
+
+corner-one:
+  x: 20000
+  z: 10000
+corner-two:
+  x: -20000
+  z: -10000

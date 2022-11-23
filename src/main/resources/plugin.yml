@@ -1,0 +1,4 @@
+name: TWB
+version: '${project.version}'
+main: com.ethan.twb.TWB
+api-version: 1.19
