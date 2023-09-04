@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -28,6 +29,7 @@ public final class TWB extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event){
         Player player = event.getPlayer();
+        player.getVehicle();
         int x = player.getLocation().getBlockX();
         int z = player.getLocation().getBlockZ();
         int x_new = x;
@@ -67,7 +69,7 @@ public final class TWB extends JavaPlugin implements Listener {
             location.setZ(z_new);
             Block block = player.getWorld().getHighestBlockAt(x_new, z_new);
             location.setY(block.getY() + 1);
-            player.teleport(location);
+            teleportPlayer(player, location, player.getVehicle());
         } else if (x_new != x){
             Location location = player.getLocation();
             if (mode.equals("teleport")){
@@ -83,18 +85,25 @@ public final class TWB extends JavaPlugin implements Listener {
             }
             Block block = player.getWorld().getHighestBlockAt(x_new, z_new);
             location.setY(block.getY() + 1);
-            player.teleport(location);
+            teleportPlayer(player, location, player.getVehicle());
         } else {
             Location location = player.getLocation();
             location.setZ(z_new);
             Block block = player.getWorld().getHighestBlockAt(x_new, z_new);
             location.setY(block.getY() + 1);
-            player.teleport(location);
+            teleportPlayer(player, location, player.getVehicle());
         }
     }
 
-    @Override
-    public void onDisable() {
-        // Plugin shutdown logic
+    public void teleportPlayer(Player player, Location location, Entity entity){
+        // If player is riding a vehicle, teleport the vehicle too
+        if (entity == null){
+            player.teleport(location);
+            return;
+        }
+        player.leaveVehicle();
+        entity.teleport(location);
+        player.teleport(location);
+        entity.addPassenger(player);
     }
 }
