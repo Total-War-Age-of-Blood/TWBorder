@@ -5,9 +5,15 @@
 # block - blocks players from crossing border
 mode: teleport
 
+# Max corner
 corner-one:
   x: 20000
   z: 10000
+
+# Min corner
 corner-two:
   x: -20000
   z: -10000
+
+# How far away from the border you want players to be teleported
+buffer: 10
