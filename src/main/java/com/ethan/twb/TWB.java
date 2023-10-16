@@ -1,26 +1,23 @@
 package com.ethan.twb;
 
-import net.countercraft.movecraft.Movecraft;
-import net.countercraft.movecraft.MovecraftChunk;
-import net.countercraft.movecraft.MovecraftLocation;
-import net.countercraft.movecraft.MovecraftRotation;
 import net.countercraft.movecraft.craft.Craft;
 import net.countercraft.movecraft.craft.CraftManager;
 import net.countercraft.movecraft.craft.PilotedCraft;
 import net.countercraft.movecraft.events.CraftPreTranslateEvent;
-import net.countercraft.movecraft.events.CraftTranslateEvent;
-import net.countercraft.movecraft.processing.MovecraftWorld;
 import net.countercraft.movecraft.util.hitboxes.HitBox;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
+import org.bukkit.*;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public final class TWB extends JavaPlugin implements Listener {
     String mode = this.getConfig().getString("mode");
@@ -46,64 +43,86 @@ public final class TWB extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event){
         Player player = event.getPlayer();
-        // Return if player is piloting a craft
-        if (CraftManager.getInstance().getCraftByPlayer(player) != null){return;}
+        // Return if player is piloting a craft. First if statement catches if Movecraft is not active.
+        if (CraftManager.getInstance() != null){
+            if (CraftManager.getInstance().getCraftByPlayer(player) != null){return;}
+        }
+
 
         int x = player.getLocation().getBlockX();
         int z = player.getLocation().getBlockZ();
         int xNew = x;
         int zNew = z;
+        int xTrash = x;
 
         // If the player is out of bounds, change xNew and/or zNew to reflect their current position
-        if (x >= cornerOneX){xNew = cornerOneX - buffer;}
-        if (x <= cornerTwoX){xNew = cornerTwoX + buffer;}
-        if (z >= cornerOneZ){zNew = cornerOneZ - buffer;}
-        if (z <= cornerTwoZ){zNew = cornerTwoZ + buffer;}
+        // Check if player is in the nether
+        if (player.getWorld().getEnvironment().equals(World.Environment.NETHER)){
+            if (x >= cornerOneX/8){xNew = xTrash = cornerOneX/8 - buffer;}
+            if (x <= cornerTwoX/8){xNew = xTrash = cornerTwoX/8 + buffer;}
+            if (z >= cornerOneZ/8){zNew = xTrash = cornerOneZ/8 - buffer;}
+            if (z <= cornerTwoZ/8){zNew = xTrash = cornerTwoZ/8 + buffer;}
+        } else{
+            if (x >= cornerOneX){xNew = xTrash = cornerOneX - buffer;}
+            if (x <= cornerTwoX){xNew = xTrash = cornerTwoX + buffer;}
+            if (z >= cornerOneZ){zNew = xTrash = cornerOneZ - buffer;}
+            if (z <= cornerTwoZ){zNew = xTrash = cornerTwoZ + buffer;}
+        }
 
         if (xNew == x && zNew == z){return;}
         // If the player is out of bounds, teleport them based on mode.
         player.sendMessage(ChatColor.RED + "You have reached the world's border.");
         if (xNew != x && zNew != z){
-            Location location = player.getLocation();
             // If the mode is "teleport" instead of teleporting the player 10 blocks back from the offending axis,
             // teleport the player 10 blocks away from the opposite side of the axis.
             if (mode.equals("teleport")){
                 if (x >= cornerOneX){
-                    location.setX(cornerTwoX + buffer);
+                    xTrash = xNew;
                     xNew = cornerTwoX + buffer;
                 }else if (x <= cornerTwoX){
-                    location.setX(cornerOneX - buffer);
+                    xTrash = xNew;
                     xNew = cornerOneX - buffer;
                 }
-            }else if (mode.equals("block")){
-                location.setX(xNew);
             }
-            location.setZ(zNew);
-            Block block = player.getWorld().getHighestBlockAt(xNew, zNew);
-            location.setY(block.getY() + 1);
-            teleportPlayer(player, location, player.getVehicle());
+            Block block = findSafeBlock(player, xNew, player.getLocation().getBlockY(), zNew);
+            if (block != null){
+                teleportPlayer(player, block.getLocation(), player.getVehicle());
+            } else{
+                Location location = player.getLocation();
+                location.setX(xTrash);
+                teleportPlayer(player, location, player.getVehicle());
+                player.sendMessage(ChatColor.RED + "No safe blocks found to teleport to");
+            }
         } else if (xNew != x){
-            Location location = player.getLocation();
             if (mode.equals("teleport")){
                 if (x >= cornerOneX){
-                    location.setX(cornerTwoX + buffer);
+                    xTrash = xNew;
                     xNew = cornerTwoX + buffer;
                 }else if (x <= cornerTwoX){
-                    location.setX(cornerOneX - buffer);
+                    xTrash = xNew;
                     xNew = cornerOneX - buffer;
                 }
-            }else if (mode.equals("block")){
-                location.setX(xNew);
             }
-            Block block = player.getWorld().getHighestBlockAt(xNew, zNew);
-            location.setY(block.getY() + 1);
-            teleportPlayer(player, location, player.getVehicle());
+            Block block = findSafeBlock(player, xNew, player.getLocation().getBlockY(), zNew);
+            if (block != null){
+                teleportPlayer(player, block.getLocation(), player.getVehicle());
+            } else{
+                Location location = player.getLocation();
+                location.setX(xTrash);
+                teleportPlayer(player, location, player.getVehicle());
+                player.sendMessage(ChatColor.RED + "No safe blocks found to teleport to");
+            }
         } else {
-            Location location = player.getLocation();
-            location.setZ(zNew);
-            Block block = player.getWorld().getHighestBlockAt(xNew, zNew);
-            location.setY(block.getY() + 1);
-            teleportPlayer(player, location, player.getVehicle());
+            Block block = findSafeBlock(player, xNew, player.getLocation().getBlockY(), zNew);
+            if (block != null){
+                teleportPlayer(player, block.getLocation(), player.getVehicle());
+            } else{
+                Location location = player.getLocation();
+                location.setX(xTrash);
+                teleportPlayer(player, location, player.getVehicle());
+                player.sendMessage(ChatColor.RED + "No safe blocks found to teleport to");
+            }
+
         }
     }
 
@@ -185,12 +204,38 @@ public final class TWB extends JavaPlugin implements Listener {
         // If player is riding a vehicle, teleport the vehicle too
         if (entity == null){
             player.teleport(location);
-            System.out.println("Teleporting to");
             return;
         }
         player.leaveVehicle();
         entity.teleport(location);
         player.teleport(location);
         entity.addPassenger(player);
+    }
+
+    List<Material> unsafeBlocks = Arrays.asList(Material.AIR, Material.LAVA, Material.FIRE);
+
+    public Block findSafeBlock(Player player, int newX, int oldY, int newZ){
+        World world = player.getWorld();
+        int maxHeight = world.getMaxHeight();
+        int minHeight = world.getMinHeight();
+        List<Block> safeBlocks = new ArrayList<>();
+        for (int i = minHeight; i <= maxHeight; i++){
+            Block block = world.getBlockAt(newX, i, newZ);
+            if (unsafeBlocks.contains(block.getType())){continue;}
+            // Check two blocks above for air
+            if (!block.getRelative(BlockFace.UP).getType().equals(Material.AIR)
+                    || !block.getRelative(0, 2, 0).getType().equals(Material.AIR)){continue;}
+            if (world.getEnvironment().equals(World.Environment.NETHER) && block.getY() == 127 && block.getType().equals(Material.BEDROCK)){continue;}
+            safeBlocks.add(block);
+        }
+        Block safe = null;
+        for (Block block : safeBlocks){
+            if (safe == null){safe = block;}
+            int blockY = block.getY();
+            int safeY = safe.getY();
+            if (Math.abs(oldY - blockY) < Math.abs(oldY - safeY)){safe = block;}
+        }
+        if (safe != null){safe = safe.getRelative(BlockFace.UP);}
+        return safe;
     }
 }
